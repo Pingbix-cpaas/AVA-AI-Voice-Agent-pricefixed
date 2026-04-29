@@ -689,3 +689,4 @@ If you find this project useful, please also give it a ⭐️!
 ## Star History
 
 [![Star History Chart](https://api.star-history.com/svg?repos=hkjarral/Asterisk-AI-Voice-Agent&type=date&legend=top-left)](https://www.star-history.com/#hkjarral/Asterisk-AI-Voice-Agent&type=date&legend=top-left)
+# AVA-AI-Voice-Agent-pricefixed
