@@ -1,0 +1,82 @@
+# Asterisk AI Voice Agent - Main Services
+
+name: asterisk-ai-voice-agent
+
+services:
+  postgres:
+    image: postgres:16
+    container_name: postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ava
+      POSTGRES_USER: ava
+      POSTGRES_PASSWORD: ava123
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  ai_engine:
+    depends_on:
+      - postgres
+    image: asterisk-ai-voice-agent-ai-engine:latest
+    pull_policy: build
+    build:
+      context: .
+      dockerfile: Dockerfile
+      network: host
+      args:
+        ASTERISK_GID: ${ASTERISK_GID:-995}
+    container_name: ai_engine
+    user: "appuser"
+    network_mode: host
+    volumes:
+      - ./src:/app/src
+      - ./main.py:/app/main.py
+      - ./config:/app/config
+      - ./scripts:/app/scripts
+      - ./models:/app/models
+      - ./asterisk_media:/mnt/asterisk_media
+      - ./data:/app/data
+      - ./secrets:/app/project/secrets
+    env_file:
+      - .env
+    environment:
+      - PYTHONPATH=/app
+      - PYTHONUNBUFFERED=1
+      - HEALTH_BIND_HOST=0.0.0.0
+      - DATABASE_URL=postgresql://ava:ava123@localhost:5432/ava
+    tty: true
+    stdin_open: true
+    restart: unless-stopped
+
+  admin_ui:
+    depends_on:
+      - postgres
+    image: asterisk-ai-voice-agent-admin-ui:latest
+    pull_policy: build
+    build:
+      context: ./admin_ui
+      dockerfile: Dockerfile
+      network: host
+    container_name: admin_ui
+    network_mode: host
+    group_add:
+      - ${DOCKER_GID:-999}
+    volumes:
+      - ./:/app/project
+      - ${DOCKER_SOCK:-/var/run/docker.sock}:/var/run/docker.sock
+      - /etc/os-release:/host/etc/os-release:ro
+      - ./asterisk_media:/mnt/asterisk_media
+      - ./data:/app/data
+      - ${ASTERISK_RECORDING_PATH:-/var/spool/asterisk/monitor}:/mnt/asterisk_recordings:ro
+    env_file:
+      - .env
+    environment:
+      - PROJECT_ROOT=/app/project
+      - HOST_PROJECT_ROOT=${HOST_PROJECT_ROOT:-/root/Asterisk-AI-Voice-Agent}
+      - DATABASE_URL=postgresql://ava:ava123@localhost:5432/ava
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
