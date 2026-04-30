@@ -157,7 +157,7 @@ class UsageEvent(Base):
     event_type = Column(String(50), nullable=False)
     quantity = Column(Numeric(12, 2), nullable=False)
     cost_inr = Column(Numeric(12, 4), default=0)
-    event_metadata = Column(JSON, nullable=True)
+    event_event_metadata = Column(JSON, nullable=True)
     recorded_at = Column(DateTime, default=datetime.utcnow)
 
 class BillingSummary(Base):

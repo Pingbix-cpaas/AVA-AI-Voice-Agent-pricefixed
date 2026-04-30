@@ -76,7 +76,6 @@ class UserUpdateRequest(UserActionRequest):
 class ResetPasswordRequest(UserActionRequest):
     password: str
 
-admin|reseller_admin
 class InviteRequest(BaseModel):
     email: EmailStr
     role: str = Field(..., pattern="^(admin|reseller_admin|end_user|readonly_user)$")

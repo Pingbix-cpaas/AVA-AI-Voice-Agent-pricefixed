@@ -53,7 +53,7 @@ class User(BaseModel):
     disabled: Optional[bool] = None
     must_change_password: Optional[bool] = False
     parent_user_id: Optional[str] = None
-    permission_group: str = "global"
+    permission_group: Optional[str] = "default"
     permission_scope: Optional[dict] = None
 
 
@@ -137,9 +137,7 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
     if user.status == "disabled" or user.disabled:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="User account is disabled")
 
-    users = load_users()
-    user_dict = users.get(user.username, {})
-    must_change = user_dict.get("must_change_password", False)
+    must_change = user.must_change_password or False
     user_store.record_login(user.username)
 
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
