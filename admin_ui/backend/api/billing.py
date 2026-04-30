@@ -79,13 +79,13 @@ def require_super_admin(user=Depends(auth.get_current_user)):
 
 
 def require_admin(user=Depends(auth.get_current_user)):
-    if user.role not in ("super_admin", "tenant_admin"):
+    if user.role not in ("super_admin", "admin"):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
     return user
 
 
 def require_admin_or_self(username: str, user=Depends(auth.get_current_user)):
-    if user.role not in ("super_admin", "tenant_admin") and user.username != username:
+    if user.role not in ("super_admin", "admin") and user.username != username:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
     return user
 

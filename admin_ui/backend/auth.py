@@ -52,6 +52,9 @@ class User(BaseModel):
     permissions: List[str] = []
     disabled: Optional[bool] = None
     must_change_password: Optional[bool] = False
+    parent_user_id: Optional[str] = None
+    permission_group: str = "global"
+    permission_scope: Optional[dict] = None
 
 
 class UserInDB(User):
@@ -148,6 +151,9 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
             "workspace_id": user.workspace_id,
             "role": user.role,
             "permissions": user.permissions,
+            "parent_user_id": user.parent_user_id,
+            "permission_group": user.permission_group,
+            "permission_scope": user.permission_scope or {},
         },
         expires_delta=access_token_expires,
     )

@@ -7,10 +7,13 @@ interface User {
     user_id?: string;
     tenant_id?: string;
     workspace_id?: string;
-    role?: 'super_admin' | 'tenant_admin' | 'tenant_manager' | 'end_user' | 'readonly_user';
+    role?: 'super_admin' | 'admin' | 'reseller_admin' | 'end_user' | 'readonly_user';
     status?: string;
     permissions?: string[];
     disabled?: boolean;
+    parent_user_id?: string;
+    permission_group?: string;
+    permission_scope?: Record<string, any>;
 }
 
 interface AuthContextType {

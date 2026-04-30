@@ -1,9 +1,13 @@
-from typing import Iterable, List, Optional
+from typing import Iterable, List, Optional, Dict, Any
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, EmailStr, Field
+from sqlalchemy.orm import Session
 
 import auth
+from database import get_db
+from models import User
+from services import rbac
 from services.user_store_db import (
     assign_tenant_owner,
     create_invite,
@@ -27,7 +31,7 @@ class UserCreateRequest(BaseModel):
     username: str
     email: EmailStr
     password: str
-    role: str = Field(..., pattern="^(super_admin|tenant_admin|tenant_manager|end_user|readonly_user)$")
+    role: str = Field(..., pattern="^(super_admin|admin|reseller_admin|end_user|readonly_user)$")
     tenant_id: Optional[str] = None
     workspace_id: Optional[str] = None
     assigned_agent_id: Optional[str] = None
@@ -47,6 +51,9 @@ class UserCreateRequest(BaseModel):
     did_number: Optional[str] = None
     sip_username: Optional[str] = None
     sip_transport: Optional[str] = "udp"
+    parent_user_id: Optional[str] = None
+    permission_group: str = "global"
+    permission_scope: Optional[Dict[str, Any]] = None
 
 
 class UserActionRequest(BaseModel):
@@ -55,34 +62,38 @@ class UserActionRequest(BaseModel):
 
 class UserUpdateRequest(UserActionRequest):
     email: Optional[EmailStr] = None
-    role: Optional[str] = Field(None, pattern="^(super_admin|tenant_admin|tenant_manager|end_user|readonly_user)$")
+    role: Optional[str] = Field(None, pattern="^(super_admin|admin|reseller_admin|end_user|readonly_user)$")
     permissions: Optional[List[str]] = None
     assigned_agent_id: Optional[str] = None
     department: Optional[str] = None
     phone_number: Optional[str] = None
     status: Optional[str] = Field(None, pattern="^(active|disabled)$")
+    parent_user_id: Optional[str] = None
+    permission_group: Optional[str] = None
+    permission_scope: Optional[Dict[str, Any]] = None
 
 
 class ResetPasswordRequest(UserActionRequest):
     password: str
 
-
+admin|reseller_admin
 class InviteRequest(BaseModel):
     email: EmailStr
-    role: str = Field(..., pattern="^(tenant_admin|tenant_manager|end_user|readonly_user)$")
+    role: str = Field(..., pattern="^(admin|reseller_admin|end_user|readonly_user)$")
     tenant_id: Optional[str] = None
     workspace_id: Optional[str] = None
 
 
 def require_admin(user):
-    if user.role not in ("super_admin", "tenant_admin"):
+    if user.role not in ("super_admin", "admin"):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
     return user
 
 
 def _assert_can_manage_role(current_user, target_role: str, provision_separate_tenant: bool = False) -> None:
-    if current_user.role != "super_admin" and target_role == "super_admin":
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only super admins can create super admins")
+    # Use RBAC service to check if user can create target role
+    if not rbac.can_create_role(current_user, target_role):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=f"Cannot create users with role: {target_role}")
     if current_user.role != "super_admin" and provision_separate_tenant:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only super admins can provision reseller tenants")
 
@@ -129,8 +140,8 @@ def create_user_endpoint(
         )
         tenant_id = tenant["id"]
         workspace_id = f"{tenant_id}-workspace"
-        if payload.role not in ("tenant_admin", "super_admin"):
-            raise HTTPException(status_code=400, detail="A reseller tenant owner must be tenant_admin or super_admin")
+        if payload.role not in ("admin", "super_admin"):
+            raise HTTPException(status_code=400, detail="A reseller tenant owner must be admin or super_admin")
     try:
         user = create_user(
             username=payload.username,
@@ -143,6 +154,10 @@ def create_user_endpoint(
             department=payload.department,
             permissions=payload.permissions,
             must_change_password=True,
+            parent_user_id=payload.parent_user_id,
+            permission_group=payload.permission_group,
+            permission_scope=payload.permission_scope,
+            created_by=current_user.username,
         )
         if tenant:
             assign_tenant_owner(tenant["id"], payload.username)
@@ -220,6 +235,9 @@ def update_user_endpoint(payload: UserUpdateRequest, current_user=Depends(auth.g
             department=payload.department,
             phone_number=payload.phone_number,
             status=payload.status,
+            parent_user_id=payload.parent_user_id,
+            permission_group=payload.permission_group,
+            permission_scope=payload.permission_scope,
         )
     except KeyError:
         raise HTTPException(status_code=404, detail="User not found")
@@ -272,3 +290,74 @@ def user_activity(current_user=Depends(auth.get_current_user)):
         for user in users
     ]
     return {"activity": activity}
+
+
+# ============================================================================
+# Hierarchy Endpoints
+# ============================================================================
+
+@router.get("/hierarchy")
+def get_hierarchy_endpoint(current_user=Depends(auth.get_current_user), db: Session = Depends(get_db)):
+    """Get the full user hierarchy starting from current user's perspective."""
+    require_admin(current_user)
+    
+    # Get the current user from DB to build tree
+    user = db.query(User).filter(User.id == current_user.user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Build hierarchy tree starting from current user
+    tree = rbac.build_hierarchy_tree(user, db)
+    return {"hierarchy": tree}
+
+
+@router.get("/subtree/{user_id}")
+def get_user_subtree_endpoint(user_id: str, current_user=Depends(auth.get_current_user), db: Session = Depends(get_db)):
+    """Get the subtree of all child users under a specific user."""
+    require_admin(current_user)
+    
+    # Fetch the target user
+    target_user = db.query(User).filter(User.id == user_id).first()
+    if not target_user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Check if current user has permission to view this subtree
+    if not rbac.enforce_scope(current_user, target_user):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied to this user's subtree")
+    
+    # Build subtree
+    subtree = rbac.get_user_subtree(target_user, db)
+    return {"subtree": subtree}
+
+
+@router.get("/children/{user_id}")
+def get_user_children_endpoint(user_id: str, current_user=Depends(auth.get_current_user), db: Session = Depends(get_db)):
+    """Get direct child users of a specific user."""
+    require_admin(current_user)
+    
+    # Fetch the parent user
+    parent_user = db.query(User).filter(User.id == user_id).first()
+    if not parent_user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Check if current user has permission
+    if not rbac.enforce_scope(current_user, parent_user):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+    
+    # Get direct children
+    children = db.query(User).filter(User.parent_user_id == user_id).all()
+    
+    return {
+        "parent_user_id": user_id,
+        "children": [
+            {
+                "user_id": child.id,
+                "username": child.username,
+                "role": child.role,
+                "email": child.email,
+                "status": child.status,
+                "permission_group": child.permission_group,
+            }
+            for child in children
+        ]
+    }

@@ -144,6 +144,10 @@ def _ensure_default_admin(state: Dict[str, Any]) -> bool:
         "last_login": None,
         "must_change_password": True,
         "password_hash": hash_password("admin"),
+        "parent_user_id": None,
+        "permission_group": "global",
+        "permission_scope": {},
+        "created_by": "system",
     }
     state["users"]["admin"] = admin_user
     return True

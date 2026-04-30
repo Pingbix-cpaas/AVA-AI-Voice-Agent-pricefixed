@@ -31,7 +31,7 @@ export const UserPricingManager: React.FC<UserPricingManagerProps> = ({ selected
     billing_cycle: 'monthly',
   });
 
-  const isAdmin = user?.role === 'super_admin' || user?.role === 'tenant_admin';
+  const isAdmin = user?.role === 'super_admin' || user?.role === 'admin';
 
   useEffect(() => {
     loadPlans();

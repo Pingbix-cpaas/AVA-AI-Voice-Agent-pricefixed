@@ -13,14 +13,14 @@ _INVITE_TTL = timedelta(hours=24)
 
 ROLE_PERMISSIONS = {
     "super_admin": ["super_admin", "manage_platform", "impersonate"],
-    "tenant_admin": [
+    "admin": [
         "manage_workspace",
         "manage_users",
         "configure_providers",
         "view_billing",
         "manage_agents",
     ],
-    "tenant_manager": ["manage_users", "manage_agents", "view_billing"],
+    "reseller_admin": ["manage_users", "manage_agents", "view_billing"],
     "end_user": ["consume_voice", "view_call_history", "view_assigned_agents"],
     "readonly_user": ["view_call_history", "view_assigned_agents"],
 }
@@ -52,7 +52,11 @@ def serialize_user(user: User) -> Dict[str, Any]:
         "updated_at": user.updated_at.isoformat() + "Z" if user.updated_at else None,
         "last_login": user.last_login.isoformat() + "Z" if user.last_login else None,
         "must_change_password": user.must_change_password,
-        "password_hash": user.password_hash
+        "password_hash": user.password_hash,
+        "parent_user_id": user.parent_user_id,
+        "permission_group": user.permission_group,
+        "permission_scope": user.permission_scope or {},
+        "created_by": user.created_by,
     }
 
 def serialize_tenant(tenant: Tenant) -> Dict[str, Any]:
@@ -221,6 +225,10 @@ def create_user(
     department: Optional[str] = None,
     permissions: Optional[Iterable[str]] = None,
     must_change_password: bool = False,
+    parent_user_id: Optional[str] = None,
+    permission_group: str = "global",
+    permission_scope: Optional[Dict[str, Any]] = None,
+    created_by: Optional[str] = None,
 ) -> Dict[str, Any]:
     db = get_session()
     try:
@@ -241,6 +249,10 @@ def create_user(
             department=department,
             must_change_password=must_change_password,
             password_hash=hash_password(password),
+            parent_user_id=parent_user_id,
+            permission_group=permission_group,
+            permission_scope=permission_scope or {},
+            created_by=created_by,
         )
         db.add(user)
         db.commit()
@@ -276,6 +288,9 @@ def update_user(
     department: Optional[str] = None,
     phone_number: Optional[str] = None,
     status: Optional[str] = None,
+    parent_user_id: Optional[str] = None,
+    permission_group: Optional[str] = None,
+    permission_scope: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     db = get_session()
     try:
@@ -298,6 +313,12 @@ def update_user(
             user.phone_number = phone_number
         if status is not None:
             user.status = status
+        if parent_user_id is not None:
+            user.parent_user_id = parent_user_id
+        if permission_group is not None:
+            user.permission_group = permission_group
+        if permission_scope is not None:
+            user.permission_scope = permission_scope
 
         user.updated_at = datetime.utcnow()
         db.commit()

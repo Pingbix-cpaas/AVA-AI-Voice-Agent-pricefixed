@@ -35,7 +35,7 @@ export const UsageDashboard: React.FC = () => {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
 
-  const isAdmin = user?.role === 'super_admin' || user?.role === 'tenant_admin';
+  const isAdmin = user?.role === 'super_admin' || user?.role === 'admin';
 
   useEffect(() => {
     loadDashboardData();

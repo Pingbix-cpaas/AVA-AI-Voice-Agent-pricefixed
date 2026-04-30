@@ -26,7 +26,7 @@ export const BillingSummary: React.FC = () => {
   });
   const [username, setUsername] = useState('');
 
-  const isAdmin = user?.role === 'super_admin' || user?.role === 'tenant_admin';
+  const isAdmin = user?.role === 'super_admin' || user?.role === 'admin';
   const isSuperAdmin = user?.role === 'super_admin';
 
   useEffect(() => {

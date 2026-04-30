@@ -9,7 +9,7 @@ export const BillingDashboard: React.FC = () => {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<'overview' | 'plans' | 'assign' | 'usage' | 'summary'>('overview');
 
-  const isAdmin = user?.role === 'super_admin' || user?.role === 'tenant_admin';
+  const isAdmin = user?.role === 'super_admin' || user?.role === 'admin';
   const isSuperAdmin = user?.role === 'super_admin';
 
   if (!isAdmin) {

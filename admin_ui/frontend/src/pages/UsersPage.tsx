@@ -7,7 +7,7 @@ import { useAuth } from '../auth/AuthContext';
 import { ConfigSection } from '../components/ui/ConfigSection';
 import { ConfigCard } from '../components/ui/ConfigCard';
 
-type UserRole = 'super_admin' | 'tenant_admin' | 'tenant_manager' | 'end_user' | 'readonly_user';
+type UserRole = 'super_admin' | 'admin' | 'reseller_admin' | 'end_user' | 'readonly_user';
 type UserStatus = 'active' | 'disabled';
 
 interface ManagedUser {
@@ -88,7 +88,7 @@ const UsersPage: React.FC = () => {
     const [statusFilter, setStatusFilter] = useState<'all' | UserStatus>('all');
     const [form, setForm] = useState<CreateUserForm>(initialForm);
 
-    const isAdmin = user?.role === 'super_admin' || user?.role === 'tenant_admin' || user?.username === 'admin';
+    const isAdmin = user?.role === 'super_admin' || user?.role === 'admin' || user?.username === 'admin';
     const isSuperAdmin = user?.role === 'super_admin' || user?.username === 'admin';
     const isResellerTenant = form.account_scope === 'reseller_tenant';
 
@@ -258,7 +258,7 @@ const UsersPage: React.FC = () => {
                                         type="radio"
                                         className="mt-1"
                                         checked={isResellerTenant}
-                                        onChange={() => setForm((prev) => ({ ...prev, account_scope: 'reseller_tenant', role: 'tenant_admin', access_level: 'full' }))}
+                                        onChange={() => setForm((prev) => ({ ...prev, account_scope: 'reseller_tenant', role: 'admin', access_level: 'full' }))}
                                     />
                                     <Building2 className="w-4 h-4 mt-0.5 text-muted-foreground" />
                                     <span>
@@ -338,8 +338,8 @@ const UsersPage: React.FC = () => {
                                 >
                                     {!isResellerTenant && <option value="end_user">End User</option>}
                                     {!isResellerTenant && <option value="readonly_user">Read-only User</option>}
-                                    {!isResellerTenant && <option value="tenant_manager">Tenant Manager</option>}
-                                    <option value="tenant_admin">Tenant Admin</option>
+                                    {!isResellerTenant && <option value="reseller_admin">Reseller Admin</option>}
+                                    <option value="admin">Admin</option>
                                     {isSuperAdmin && <option value="super_admin">Super Admin</option>}
                                 </select>
                             </div>
@@ -474,8 +474,8 @@ const UsersPage: React.FC = () => {
                             >
                                 <option value="all">All Roles</option>
                                 <option value="super_admin">Super Admin</option>
-                                <option value="tenant_admin">Tenant Admin</option>
-                                <option value="tenant_manager">Tenant Manager</option>
+                                <option value="admin">Admin</option>
+                                <option value="reseller_admin">Reseller Admin</option>
                                 <option value="end_user">End User</option>
                                 <option value="readonly_user">Read-only User</option>
                             </select>

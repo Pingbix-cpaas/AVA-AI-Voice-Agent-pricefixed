@@ -42,6 +42,13 @@ class User(Base):
     last_login = Column(DateTime)
     must_change_password = Column(Boolean, default=False)
     password_hash = Column(String(255))
+    parent_user_id = Column(String(255), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    permission_group = Column(String(255), default="global", nullable=False)
+    permission_scope = Column(JSON, default={}, nullable=False)
+    created_by = Column(String(255), nullable=True)
+    
+    # Self-referential relationship for hierarchy
+    parent = relationship("User", remote_side=[id], backref="children")
 
 class Subscription(Base):
     __tablename__ = "subscriptions"

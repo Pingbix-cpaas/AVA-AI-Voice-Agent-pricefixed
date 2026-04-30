@@ -63,8 +63,8 @@ const SidebarGroup = ({ title, children }: { title: string, children: React.Reac
 const Sidebar = () => {
     const { user, logout } = useAuth();
     const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
-    const isAdmin = user?.role === 'super_admin' || user?.role === 'tenant_admin' || user?.username === 'admin';
-    const isPowerUser = isAdmin || user?.role === 'tenant_manager';
+    const isAdmin = user?.role === 'super_admin' || user?.role === 'admin' || user?.username === 'admin';
+    const isPowerUser = isAdmin || user?.role === 'reseller_admin';
     const roleLabel = user?.role ? user.role.replace(/_/g, ' ') : 'Administrator';
 
     return (
