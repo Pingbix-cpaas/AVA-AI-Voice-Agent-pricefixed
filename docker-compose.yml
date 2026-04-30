@@ -29,7 +29,6 @@ services:
         ASTERISK_GID: ${ASTERISK_GID:-995}
     container_name: ai_engine
     user: "appuser"
-    network_mode: host
     volumes:
       - ./src:/app/src
       - ./main.py:/app/main.py
@@ -45,7 +44,7 @@ services:
       - PYTHONPATH=/app
       - PYTHONUNBUFFERED=1
       - HEALTH_BIND_HOST=0.0.0.0
-      - DATABASE_URL=postgresql://ava:ava123@localhost:5432/ava
+      - DATABASE_URL=postgresql://ava:ava123@postgres:5432/ava
     tty: true
     stdin_open: true
     restart: unless-stopped
@@ -60,7 +59,8 @@ services:
       dockerfile: Dockerfile
       network: host
     container_name: admin_ui
-    network_mode: host
+    ports:
+      - "0.0.0.0:3003:3003"
     group_add:
       - ${DOCKER_GID:-999}
     volumes:
@@ -75,7 +75,7 @@ services:
     environment:
       - PROJECT_ROOT=/app/project
       - HOST_PROJECT_ROOT=${HOST_PROJECT_ROOT:-/root/Asterisk-AI-Voice-Agent}
-      - DATABASE_URL=postgresql://ava:ava123@localhost:5432/ava
+      - DATABASE_URL=postgresql://ava:ava123@postgres:5432/ava
     restart: unless-stopped
 
 volumes:
